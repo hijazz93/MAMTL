@@ -27,3 +27,11 @@ python run_experiments.py --csv C:\Data\MAMTL\overview.csv --images C:\Data\MAMT
 Each run saves the best checkpoint, training history, validation metrics, and test metrics as JSON.
 
 The comparison runs should use the same fixed split (`--split-seed 2026`). Vary `--seed` for independent model initializations, and compare the binary defect baseline (`defect`), shared multi-task model (`multitask`), and material-probability fusion model (`fusion`). Main binary metrics include Macro-F1, balanced accuracy, precision, recall, AUROC, and per-material Macro-F1.
+
+Summarize completed runs with:
+
+```powershell
+python summarize_results.py C:\Data\MAMTL\runs --out results
+```
+
+Dataset reference: Buettner et al., "DefectAtlas-20: A real-world image dataset for joint material and surface-condition classification," *Data in Brief* (2026), DOI: `10.1016/j.dib.2026.113215`. The dataset is available from Zenodo under CC BY 4.0: DOI `10.5281/zenodo.21719370`.

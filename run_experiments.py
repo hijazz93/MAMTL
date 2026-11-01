@@ -108,7 +108,9 @@ def train(args):
         if score>best: best=score; bad=0; torch.save(net.state_dict(),best_path)
         else: bad+=1
         if bad>=args.patience: break
-    net.load_state_dict(torch.load(best_path,map_location=device)); result={'mode':args.mode,'seed':args.seed,'best_val_macro_f1':best,'val':evaluate(net,va,device,args.mode),'test':evaluate(net,te,device,args.mode),'history':hist,'num_params':sum(p.numel() for p in net.parameters())}; json.dump(result,open(out/f'{args.mode}_result.json','w'),indent=2); print(json.dumps(result['test'],indent=2))
+    net.load_state_dict(torch.load(best_path,map_location=device)); result={'mode':args.mode,'seed':args.seed,'split_seed':args.split_seed,'backbone':args.backbone,'input_size':args.size,'learning_rate':args.lr,'lambda_material':args.lambda_material,'best_val_macro_f1':best,'val':evaluate(net,va,device,args.mode),'test':evaluate(net,te,device,args.mode),'history':hist,'num_params':sum(p.numel() for p in net.parameters())}
+    result['material_names']=mats
+    json.dump(result,open(out/f'{args.mode}_result.json','w'),indent=2); print(json.dumps(result['test'],indent=2))
 
 if __name__=='__main__':
     ap=argparse.ArgumentParser(); ap.add_argument('--csv',default='overview.csv'); ap.add_argument('--images',default='images'); ap.add_argument('--out',default='runs'); ap.add_argument('--mode',choices=['defect','multitask','fusion','joint20'],required=True); ap.add_argument('--backbone',default='resnet50'); ap.add_argument('--epochs',type=int,default=30); ap.add_argument('--patience',type=int,default=7); ap.add_argument('--batch',type=int,default=16); ap.add_argument('--workers',type=int,default=4); ap.add_argument('--size',type=int,default=224); ap.add_argument('--lr',type=float,default=1e-4); ap.add_argument('--lambda-material',type=float,default=1.0); ap.add_argument('--seed',type=int,default=42); ap.add_argument('--split-seed',type=int,default=2026); ap.add_argument('--no-pretrained',action='store_true'); train(ap.parse_args())
