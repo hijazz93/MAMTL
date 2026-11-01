@@ -69,21 +69,24 @@ def metrics(y, p, ncls=2):
     return out
 
 @torch.no_grad()
-def evaluate(net, loader, device, mode):
+def evaluate(net, loader, device, mode, include_material_metrics=True):
     net.eval(); ys=[]; ps=[]; probs=[]; mats=[]; matp=[]; materials=[]; losses=[]; ce=nn.CrossEntropyLoss()
     for x,m,d,c in loader:
         x=x.to(device,non_blocking=True); m=m.to(device); d=d.to(device); c=c.to(device)
         out, mo, _=net(x); target=c if mode=='joint20' else d; losses.append(ce(out,target).item()); ps.extend(out.argmax(1).cpu().tolist()); ys.extend(target.cpu().tolist())
-        if mode!='joint20': probs.extend(out.softmax(1)[:,1].cpu().tolist()); materials.extend(m.cpu().tolist())
-        if mo is not None: mats.extend(m.cpu().tolist()); matp.extend(mo.argmax(1).cpu().tolist())
+        if mode!='joint20':
+            probs.extend(out.softmax(1)[:,1].cpu().tolist())
+            if include_material_metrics: materials.extend(m.cpu().tolist())
+        if mo is not None and include_material_metrics: mats.extend(m.cpu().tolist()); matp.extend(mo.argmax(1).cpu().tolist())
     z=metrics(ys,ps,20 if mode=='joint20' else 2); z['loss']=float(np.mean(losses))
     if mode!='joint20':
         try: z['defect_auroc']=roc_auc_score(ys,probs)
         except ValueError: z['defect_auroc']=None
-        z['defect_f1_by_material']={}
-        for mid in sorted(set(materials)):
-            keep=[i for i,v in enumerate(materials) if v==mid]
-            z['defect_f1_by_material'][str(mid)]={'macro_f1':f1_score([ys[i] for i in keep],[ps[i] for i in keep],average='macro',zero_division=0),'count':len(keep)}
+        if include_material_metrics:
+            z['defect_f1_by_material']={}
+            for mid in sorted(set(materials)):
+                keep=[i for i,v in enumerate(materials) if v==mid]
+                z['defect_f1_by_material'][str(mid)]={'macro_f1':f1_score([ys[i] for i in keep],[ps[i] for i in keep],average='macro',zero_division=0),'count':len(keep)}
     if mats: z['material_macro_f1']=f1_score(mats,matp,average='macro',zero_division=0); z['material_accuracy']=accuracy_score(mats,matp)
     return z
 
