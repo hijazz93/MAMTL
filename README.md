@@ -2,6 +2,16 @@
 
 This repository tests whether material-class supervision improves binary surface-defect recognition, including on materials that are absent from training.
 
+## Runtime
+
+The supported GPU image uses PyTorch 2.8 and torchvision 0.23. Install the project dependencies with:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+If the configured package mirror has no scikit-learn release, use the official PyPI index with `--index-url https://pypi.org/simple`.
+
 ## Data
 
 Keep DefectAtlas-20 outside Git with this layout:
@@ -33,8 +43,10 @@ The training scripts use the same class-stratified split when `--split-seed 2026
 Experiment A trains the binary defect baseline. Experiment B adds a material-classification head to the shared backbone. Use the same split seed and model initialization seeds for both modes.
 
 ```bash
-python run_experiments.py --mode defect --seed 42 --split-seed 2026 --out "$MAMTL_DATA_ROOT/runs/random/seed_42/defect"
-python run_experiments.py --mode multitask --seed 42 --split-seed 2026 --out "$MAMTL_DATA_ROOT/runs/random/seed_42/multitask"
+for seed in 42 2026; do
+  python run_experiments.py --mode defect --seed "$seed" --split-seed 2026 --out "$MAMTL_DATA_ROOT/runs/random/seed_${seed}/defect"
+  python run_experiments.py --mode multitask --seed "$seed" --split-seed 2026 --out "$MAMTL_DATA_ROOT/runs/random/seed_${seed}/multitask"
+done
 ```
 
 Repeat with additional matched seeds as needed. Each run saves the best checkpoint, training history, validation metrics, and test metrics as JSON. Summarize completed random-split runs with:
@@ -50,19 +62,16 @@ Each fold excludes one material from both training and validation. The multitask
 Run a one-epoch pilot on one material:
 
 ```bash
-python cross_material.py --heldout-material glass --modes defect multitask --epochs 1 --seed 42
+python cross_material.py --heldout-material glass --modes defect multitask --epochs 1 --seed 42 --out "$MAMTL_DATA_ROOT/runs/pilot"
 ```
 
-Run all ten folds for both models by omitting `--heldout-material`:
+Run all ten folds for both models with two independent seeds. Each seed has a separate output directory:
 
 ```bash
-python cross_material.py --modes defect multitask --seed 42
-```
-
-Summarize completed folds with:
-
-```bash
-python summarize_cross_material.py "$MAMTL_DATA_ROOT/runs/cross_material" --out "$MAMTL_DATA_ROOT/results/cross_material"
+for seed in 42 2026; do
+  python cross_material.py --modes defect multitask --seed "$seed" --split-seed 2026 --out "$MAMTL_DATA_ROOT/runs/cross_material/seed_${seed}"
+  python summarize_cross_material.py "$MAMTL_DATA_ROOT/runs/cross_material/seed_${seed}" --out "$MAMTL_DATA_ROOT/results/cross_material/seed_${seed}"
+done
 ```
 
 The primary comparison is the paired defect-recognition performance of the baseline and multitask model on each held-out material. Material-supervised training is not assumed to improve this result.
