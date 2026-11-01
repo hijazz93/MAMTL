@@ -25,3 +25,5 @@ python run_experiments.py --csv C:\Data\MAMTL\overview.csv --images C:\Data\MAMT
 ```
 
 Each run saves the best checkpoint, training history, validation metrics, and test metrics as JSON.
+
+The comparison runs should use the same fixed split (`--split-seed 2026`). Vary `--seed` for independent model initializations, and compare the binary defect baseline (`defect`), shared multi-task model (`multitask`), and material-probability fusion model (`fusion`). Main binary metrics include Macro-F1, balanced accuracy, precision, recall, AUROC, and per-material Macro-F1.

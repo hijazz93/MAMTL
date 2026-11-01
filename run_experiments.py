@@ -36,15 +36,13 @@ def stratified_split(rows, seed, train_frac=.70, val_frac=.15):
 class DefectDataset(Dataset):
     def __init__(self, rows, indices, image_root, train=False, size=224):
         self.rows=[rows[i] for i in indices]; self.image_root=Path(image_root)
+        self.image_paths={p.name:p for p in self.image_root.rglob('*.png')}
         norm=transforms.Normalize([.485,.456,.406],[.229,.224,.225])
         self.tf=transforms.Compose(([transforms.RandomResizedCrop(size,scale=(.75,1.0)), transforms.RandomHorizontalFlip()] if train else [transforms.Resize((size,size))]) + [transforms.ToTensor(),norm])
     def __len__(self): return len(self.rows)
     def __getitem__(self, i):
-        r=self.rows[i]; p=self.image_root / r['sample_name']
-        if not p.exists():
-            found=list(self.image_root.rglob(r['sample_name']))
-            if not found: raise FileNotFoundError(str(p))
-            p=found[0]
+        r=self.rows[i]; p=self.image_paths.get(r['sample_name'])
+        if p is None: raise FileNotFoundError(str(self.image_root / r['sample_name']))
         with Image.open(p) as im: x=self.tf(im.convert('RGB'))
         return x, torch.tensor(r['material_i']), torch.tensor(r['defect_i']), torch.tensor(r['class_i'])
 
@@ -72,18 +70,26 @@ def metrics(y, p, ncls=2):
 
 @torch.no_grad()
 def evaluate(net, loader, device, mode):
-    net.eval(); ys=[]; ps=[]; mats=[]; matp=[]; losses=[]; ce=nn.CrossEntropyLoss()
+    net.eval(); ys=[]; ps=[]; probs=[]; mats=[]; matp=[]; materials=[]; losses=[]; ce=nn.CrossEntropyLoss()
     for x,m,d,c in loader:
         x=x.to(device,non_blocking=True); m=m.to(device); d=d.to(device); c=c.to(device)
         out, mo, _=net(x); target=c if mode=='joint20' else d; losses.append(ce(out,target).item()); ps.extend(out.argmax(1).cpu().tolist()); ys.extend(target.cpu().tolist())
+        if mode!='joint20': probs.extend(out.softmax(1)[:,1].cpu().tolist()); materials.extend(m.cpu().tolist())
         if mo is not None: mats.extend(m.cpu().tolist()); matp.extend(mo.argmax(1).cpu().tolist())
     z=metrics(ys,ps,20 if mode=='joint20' else 2); z['loss']=float(np.mean(losses))
+    if mode!='joint20':
+        try: z['defect_auroc']=roc_auc_score(ys,probs)
+        except ValueError: z['defect_auroc']=None
+        z['defect_f1_by_material']={}
+        for mid in sorted(set(materials)):
+            keep=[i for i,v in enumerate(materials) if v==mid]
+            z['defect_f1_by_material'][str(mid)]={'macro_f1':f1_score([ys[i] for i in keep],[ps[i] for i in keep],average='macro',zero_division=0),'count':len(keep)}
     if mats: z['material_macro_f1']=f1_score(mats,matp,average='macro',zero_division=0); z['material_accuracy']=accuracy_score(mats,matp)
     return z
 
 def train(args):
     seed_all(args.seed); device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'); print('device',device)
-    rows,mats,classes=load_rows(args.csv); splits=stratified_split(rows,args.seed)
+    rows,mats,classes=load_rows(args.csv); splits=stratified_split(rows,args.split_seed)
     out=Path(args.out); out.mkdir(parents=True,exist_ok=True); json.dump({'train':splits[0],'val':splits[1],'test':splits[2],'materials':mats,'classes':classes},open(out/'splits.json','w'))
     image_root=args.images
     tr=DataLoader(DefectDataset(rows,splits[0],image_root,True,args.size),batch_size=args.batch,shuffle=True,num_workers=args.workers,pin_memory=True)
@@ -105,4 +111,4 @@ def train(args):
     net.load_state_dict(torch.load(best_path,map_location=device)); result={'mode':args.mode,'seed':args.seed,'best_val_macro_f1':best,'val':evaluate(net,va,device,args.mode),'test':evaluate(net,te,device,args.mode),'history':hist,'num_params':sum(p.numel() for p in net.parameters())}; json.dump(result,open(out/f'{args.mode}_result.json','w'),indent=2); print(json.dumps(result['test'],indent=2))
 
 if __name__=='__main__':
-    ap=argparse.ArgumentParser(); ap.add_argument('--csv',default='overview.csv'); ap.add_argument('--images',default='images'); ap.add_argument('--out',default='runs'); ap.add_argument('--mode',choices=['defect','multitask','fusion','joint20'],required=True); ap.add_argument('--backbone',default='resnet50'); ap.add_argument('--epochs',type=int,default=30); ap.add_argument('--patience',type=int,default=7); ap.add_argument('--batch',type=int,default=16); ap.add_argument('--workers',type=int,default=4); ap.add_argument('--size',type=int,default=224); ap.add_argument('--lr',type=float,default=1e-4); ap.add_argument('--lambda-material',type=float,default=1.0); ap.add_argument('--seed',type=int,default=42); ap.add_argument('--no-pretrained',action='store_true'); train(ap.parse_args())
+    ap=argparse.ArgumentParser(); ap.add_argument('--csv',default='overview.csv'); ap.add_argument('--images',default='images'); ap.add_argument('--out',default='runs'); ap.add_argument('--mode',choices=['defect','multitask','fusion','joint20'],required=True); ap.add_argument('--backbone',default='resnet50'); ap.add_argument('--epochs',type=int,default=30); ap.add_argument('--patience',type=int,default=7); ap.add_argument('--batch',type=int,default=16); ap.add_argument('--workers',type=int,default=4); ap.add_argument('--size',type=int,default=224); ap.add_argument('--lr',type=float,default=1e-4); ap.add_argument('--lambda-material',type=float,default=1.0); ap.add_argument('--seed',type=int,default=42); ap.add_argument('--split-seed',type=int,default=2026); ap.add_argument('--no-pretrained',action='store_true'); train(ap.parse_args())
