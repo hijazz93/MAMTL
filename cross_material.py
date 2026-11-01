@@ -66,9 +66,10 @@ def run_fold(args, rows, materials, classes, heldout, fold_index):
     (fold_root / 'split.json').write_text(json.dumps(split_manifest, indent=2), encoding='utf-8')
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    train_loader = DataLoader(DefectDataset(fold_rows, train_ids, args.images, True, args.size), batch_size=args.batch, shuffle=True, num_workers=args.workers, pin_memory=True)
-    val_loader = DataLoader(DefectDataset(fold_rows, val_ids, args.images, False, args.size), batch_size=args.batch, shuffle=False, num_workers=args.workers, pin_memory=True)
-    test_loader = DataLoader(DefectDataset(fold_rows, test_ids, args.images, False, args.size), batch_size=args.batch, shuffle=False, num_workers=args.workers, pin_memory=True)
+    persistent_workers = args.workers > 0
+    train_loader = DataLoader(DefectDataset(fold_rows, train_ids, args.images, True, args.size), batch_size=args.batch, shuffle=True, num_workers=args.workers, pin_memory=True, persistent_workers=persistent_workers)
+    val_loader = DataLoader(DefectDataset(fold_rows, val_ids, args.images, False, args.size), batch_size=args.batch, shuffle=False, num_workers=args.workers, pin_memory=True, persistent_workers=persistent_workers)
+    test_loader = DataLoader(DefectDataset(fold_rows, test_ids, args.images, False, args.size), batch_size=args.batch, shuffle=False, num_workers=args.workers, pin_memory=True, persistent_workers=persistent_workers)
 
     for mode in args.modes:
         seed_all(args.seed)
@@ -118,6 +119,13 @@ def run_fold(args, rows, materials, classes, heldout, fold_index):
             'seed': args.seed,
             'split_seed': split_seed,
             'backbone': args.backbone,
+            'input_size': args.size,
+            'batch_size': args.batch,
+            'workers': args.workers,
+            'learning_rate': args.lr,
+            'lambda_material': args.lambda_material,
+            'patience': args.patience,
+            'pretrained': not args.no_pretrained,
             'held_out_material': heldout,
             'seen_materials': seen_materials,
             'material_head_classes': seen_materials if mode == 'multitask' else [],

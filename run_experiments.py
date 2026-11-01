@@ -96,9 +96,10 @@ def train(args):
     rows,mats,classes=load_rows(args.csv); splits=stratified_split(rows,args.split_seed)
     out=Path(args.out); out.mkdir(parents=True,exist_ok=True); json.dump({'train':splits[0],'val':splits[1],'test':splits[2],'materials':mats,'classes':classes},open(out/'splits.json','w'))
     image_root=args.images
-    tr=DataLoader(DefectDataset(rows,splits[0],image_root,True,args.size),batch_size=args.batch,shuffle=True,num_workers=args.workers,pin_memory=True)
-    va=DataLoader(DefectDataset(rows,splits[1],image_root,False,args.size),batch_size=args.batch,shuffle=False,num_workers=args.workers,pin_memory=True)
-    te=DataLoader(DefectDataset(rows,splits[2],image_root,False,args.size),batch_size=args.batch,shuffle=False,num_workers=args.workers,pin_memory=True)
+    persistent_workers=args.workers>0
+    tr=DataLoader(DefectDataset(rows,splits[0],image_root,True,args.size),batch_size=args.batch,shuffle=True,num_workers=args.workers,pin_memory=True,persistent_workers=persistent_workers)
+    va=DataLoader(DefectDataset(rows,splits[1],image_root,False,args.size),batch_size=args.batch,shuffle=False,num_workers=args.workers,pin_memory=True,persistent_workers=persistent_workers)
+    te=DataLoader(DefectDataset(rows,splits[2],image_root,False,args.size),batch_size=args.batch,shuffle=False,num_workers=args.workers,pin_memory=True,persistent_workers=persistent_workers)
     net=Net(args.mode,len(mats),len(classes),args.backbone,not args.no_pretrained).to(device); opt=torch.optim.AdamW(net.parameters(),lr=args.lr); scaler=torch.amp.GradScaler('cuda',enabled=device.type=='cuda'); best=-1; bad=0; best_path=out/f'{args.mode}_best.pt'; hist=[]
     for ep in range(1,args.epochs+1):
         net.train(); t=time.time(); run=0
@@ -112,7 +113,7 @@ def train(args):
         if score>best: best=score; bad=0; torch.save(net.state_dict(),best_path)
         else: bad+=1
         if bad>=args.patience: break
-    net.load_state_dict(torch.load(best_path,map_location=device)); result={'mode':args.mode,'seed':args.seed,'split_seed':args.split_seed,'backbone':args.backbone,'input_size':args.size,'learning_rate':args.lr,'lambda_material':args.lambda_material,'best_val_macro_f1':best,'val':evaluate(net,va,device,args.mode),'test':evaluate(net,te,device,args.mode),'history':hist,'num_params':sum(p.numel() for p in net.parameters())}
+    net.load_state_dict(torch.load(best_path,map_location=device)); result={'mode':args.mode,'seed':args.seed,'split_seed':args.split_seed,'backbone':args.backbone,'input_size':args.size,'batch_size':args.batch,'workers':args.workers,'learning_rate':args.lr,'lambda_material':args.lambda_material,'patience':args.patience,'pretrained':not args.no_pretrained,'best_val_macro_f1':best,'val':evaluate(net,va,device,args.mode),'test':evaluate(net,te,device,args.mode),'history':hist,'num_params':sum(p.numel() for p in net.parameters())}
     result['material_names']=mats
     json.dump(result,open(out/f'{args.mode}_result.json','w'),indent=2); print(json.dumps(result['test'],indent=2))
 

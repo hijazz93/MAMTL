@@ -44,8 +44,8 @@ Experiment A trains the binary defect baseline. Experiment B adds a material-cla
 
 ```bash
 for seed in 42 2026; do
-  python run_experiments.py --mode defect --seed "$seed" --split-seed 2026 --out "$MAMTL_DATA_ROOT/runs/random/seed_${seed}/defect"
-  python run_experiments.py --mode multitask --seed "$seed" --split-seed 2026 --out "$MAMTL_DATA_ROOT/runs/random/seed_${seed}/multitask"
+  python run_experiments.py --mode defect --seed "$seed" --split-seed 2026 --batch 32 --workers 8 --out "$MAMTL_DATA_ROOT/runs/random/seed_${seed}/defect"
+  python run_experiments.py --mode multitask --seed "$seed" --split-seed 2026 --batch 32 --workers 8 --out "$MAMTL_DATA_ROOT/runs/random/seed_${seed}/multitask"
 done
 ```
 
@@ -62,15 +62,15 @@ Each fold excludes one material from both training and validation. The multitask
 Run a one-epoch pilot on one material:
 
 ```bash
-python cross_material.py --heldout-material glass --modes defect multitask --epochs 1 --seed 42 --out "$MAMTL_DATA_ROOT/runs/pilot"
+python cross_material.py --heldout-material glass --modes defect multitask --epochs 1 --seed 42 --batch 32 --workers 8 --out "$MAMTL_DATA_ROOT/runs/pilot"
 ```
 
 Run all ten folds for both models with two independent seeds. Each seed has a separate output directory:
 
 ```bash
 for seed in 42 2026; do
-  python cross_material.py --modes defect multitask --seed "$seed" --split-seed 2026 --out "$MAMTL_DATA_ROOT/runs/cross_material/seed_${seed}"
-  python summarize_cross_material.py "$MAMTL_DATA_ROOT/runs/cross_material/seed_${seed}" --out "$MAMTL_DATA_ROOT/results/cross_material/seed_${seed}"
+  python cross_material.py --modes defect multitask --seed "$seed" --split-seed 2026 --batch 32 --workers 8 --out "$MAMTL_DATA_ROOT/runs/cross_material/batch32_workers8/seed_${seed}"
+  python summarize_cross_material.py "$MAMTL_DATA_ROOT/runs/cross_material/batch32_workers8/seed_${seed}" --out "$MAMTL_DATA_ROOT/results/cross_material/batch32_workers8/seed_${seed}"
 done
 ```
 
