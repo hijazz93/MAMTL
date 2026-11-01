@@ -1,12 +1,16 @@
 import argparse
 import csv
 import json
+import os
 import statistics
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent
+DATA_ROOT = Path(os.environ.get('MAMTL_DATA_ROOT', ROOT.parent))
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('root', nargs='?', default=r'C:\Data\MAMTL\runs\cross_material')
+    parser.add_argument('root', nargs='?', default=str(DATA_ROOT / 'runs' / 'cross_material'))
     parser.add_argument('--out', default='cross_material_results')
     args = parser.parse_args()
     root, out = Path(args.root), Path(args.out)

@@ -11,6 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
 
 ROOT = Path(__file__).resolve().parent
+DATA_ROOT = Path(os.environ.get('MAMTL_DATA_ROOT', ROOT.parent))
 
 def seed_all(seed):
     random.seed(seed); np.random.seed(seed); torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
@@ -116,4 +117,20 @@ def train(args):
     json.dump(result,open(out/f'{args.mode}_result.json','w'),indent=2); print(json.dumps(result['test'],indent=2))
 
 if __name__=='__main__':
-    ap=argparse.ArgumentParser(); ap.add_argument('--csv',default='overview.csv'); ap.add_argument('--images',default='images'); ap.add_argument('--out',default='runs'); ap.add_argument('--mode',choices=['defect','multitask','fusion','joint20'],required=True); ap.add_argument('--backbone',default='resnet50'); ap.add_argument('--epochs',type=int,default=30); ap.add_argument('--patience',type=int,default=7); ap.add_argument('--batch',type=int,default=16); ap.add_argument('--workers',type=int,default=4); ap.add_argument('--size',type=int,default=224); ap.add_argument('--lr',type=float,default=1e-4); ap.add_argument('--lambda-material',type=float,default=1.0); ap.add_argument('--seed',type=int,default=42); ap.add_argument('--split-seed',type=int,default=2026); ap.add_argument('--no-pretrained',action='store_true'); train(ap.parse_args())
+    ap=argparse.ArgumentParser()
+    ap.add_argument('--csv',default=str(DATA_ROOT/'overview.csv'))
+    ap.add_argument('--images',default=str(DATA_ROOT/'images'))
+    ap.add_argument('--out',default=str(DATA_ROOT/'runs'))
+    ap.add_argument('--mode',choices=['defect','multitask','fusion','joint20'],required=True)
+    ap.add_argument('--backbone',default='resnet50')
+    ap.add_argument('--epochs',type=int,default=30)
+    ap.add_argument('--patience',type=int,default=7)
+    ap.add_argument('--batch',type=int,default=16)
+    ap.add_argument('--workers',type=int,default=4)
+    ap.add_argument('--size',type=int,default=224)
+    ap.add_argument('--lr',type=float,default=1e-4)
+    ap.add_argument('--lambda-material',type=float,default=1.0)
+    ap.add_argument('--seed',type=int,default=42)
+    ap.add_argument('--split-seed',type=int,default=2026)
+    ap.add_argument('--no-pretrained',action='store_true')
+    train(ap.parse_args())

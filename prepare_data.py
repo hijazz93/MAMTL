@@ -1,11 +1,13 @@
 from collections import defaultdict
 from pathlib import Path
 import csv
+import os
 import random
 
 ROOT = Path(__file__).resolve().parent
-IMAGE_ROOT = ROOT / "images"
-CSV_PATH = ROOT / "overview.csv"
+DATA_ROOT = Path(os.environ.get("MAMTL_DATA_ROOT", ROOT.parent))
+IMAGE_ROOT = DATA_ROOT / "images"
+CSV_PATH = DATA_ROOT / "overview.csv"
 SPLIT_ROOT = ROOT / "splits"
 SEED = 2026
 

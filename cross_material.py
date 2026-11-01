@@ -1,6 +1,7 @@
 import argparse
 import csv
 import json
+import os
 import random
 import time
 from collections import defaultdict
@@ -12,6 +13,9 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from run_experiments import DefectDataset, Net, evaluate, load_rows, seed_all
+
+ROOT = Path(__file__).resolve().parent
+DATA_ROOT = Path(os.environ.get('MAMTL_DATA_ROOT', ROOT.parent))
 
 def leave_one_material_out(rows, heldout, seed, val_fraction=0.15):
     test = [i for i, row in enumerate(rows) if row['material'] == heldout]
@@ -131,9 +135,9 @@ def run_fold(args, rows, materials, classes, heldout, fold_index):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--csv', default=r'C:\Data\MAMTL\overview.csv')
-    parser.add_argument('--images', default=r'C:\Data\MAMTL\images')
-    parser.add_argument('--out', default=r'C:\Data\MAMTL\runs\cross_material')
+    parser.add_argument('--csv', default=str(DATA_ROOT / 'overview.csv'))
+    parser.add_argument('--images', default=str(DATA_ROOT / 'images'))
+    parser.add_argument('--out', default=str(DATA_ROOT / 'runs' / 'cross_material'))
     parser.add_argument('--heldout-material', action='append', default=None)
     parser.add_argument('--modes', nargs='+', choices=['defect', 'multitask'], default=['defect', 'multitask'])
     parser.add_argument('--backbone', default='resnet50')

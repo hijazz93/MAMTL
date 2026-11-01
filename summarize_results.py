@@ -1,14 +1,17 @@
 import argparse
 import csv
 import json
+import os
 import statistics
 from pathlib import Path
 
 METRICS = ("accuracy", "balanced_accuracy", "macro_f1", "precision_macro", "recall_macro", "defect_auroc")
+ROOT = Path(__file__).resolve().parent
+DATA_ROOT = Path(os.environ.get("MAMTL_DATA_ROOT", ROOT.parent))
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("root", nargs="?", default=r"C:\Data\MAMTL\runs")
+    parser.add_argument("root", nargs="?", default=str(DATA_ROOT / "runs"))
     parser.add_argument("--out", default="results")
     args = parser.parse_args()
     root = Path(args.root)
