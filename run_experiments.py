@@ -84,7 +84,7 @@ def evaluate(net, loader, device, mode):
 def train(args):
     seed_all(args.seed); device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'); print('device',device)
     rows,mats,classes=load_rows(args.csv); splits=stratified_split(rows,args.seed)
-    out=Path(args.out); out.mkdir(exist_ok=True); json.dump({'train':splits[0],'val':splits[1],'test':splits[2],'materials':mats,'classes':classes},open(out/'splits.json','w'))
+    out=Path(args.out); out.mkdir(parents=True,exist_ok=True); json.dump({'train':splits[0],'val':splits[1],'test':splits[2],'materials':mats,'classes':classes},open(out/'splits.json','w'))
     image_root=args.images
     tr=DataLoader(DefectDataset(rows,splits[0],image_root,True,args.size),batch_size=args.batch,shuffle=True,num_workers=args.workers,pin_memory=True)
     va=DataLoader(DefectDataset(rows,splits[1],image_root,False,args.size),batch_size=args.batch,shuffle=False,num_workers=args.workers,pin_memory=True)
